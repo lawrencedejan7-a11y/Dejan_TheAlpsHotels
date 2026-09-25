@@ -15,6 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +39,9 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
+import coil.compose.AsyncImagePainter.State.Empty.painter
+import coil.request.ImageRequest
 import com.google.gson.Gson
 import ph.edu.comteq.Dejan_ThealpsHotels.ui.theme.Dejan_TheAlpsHotelsTheme
 
@@ -55,6 +65,10 @@ class MainActivity : ComponentActivity() {
 fun Homepage(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var hotels by remember { mutableStateOf(emptyList<Hotel>()) }
+    var searchQuery by remember { mutableStateOf(value = "") }
+    val filteredHotels = hotels.filter {
+        it.hotel_name.contains(searchQuery, ignoreCase = true)
+    }
 
     LaunchedEffect(key1 = Unit) {
         val json = context.assets.open("hotels.json")
@@ -74,7 +88,8 @@ fun Homepage(modifier: Modifier = Modifier) {
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "The Als Hotel", fontWeight = FontWeight.Bold)
+            Text(text = "The Alphs Hotel", fontWeight = FontWeight.Bold, color = Color(0xFFFFDBBB))
+
 
             Image(
                 painter = painterResource(id = R.drawable.france_national_flag),
@@ -87,24 +102,81 @@ fun Homepage(modifier: Modifier = Modifier) {
 
             Spacer(modifier = Modifier.weight(1f))
 
-            Image(
-                painter = painterResource(id = R.drawable.icon),
-                contentDescription = "icon",
-                contentScale = ContentScale.Crop,
+            Icon(
+                imageVector = Icons.Outlined.Person,
+                contentDescription = "User Icon",
                 modifier = Modifier.size(35.dp)
             )
         }
 
+
+        OutlinedTextField(
+            value = searchQuery,
+            onValueChange = { searchQuery = it },
+            label = { Text("Search hotel...") },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp),
+
+            singleLine = true
+        )
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 18.dp)
+                .padding(top = 8.dp)
         ) {
-            items(hotels) { hotel ->
+
+            items(filteredHotels) { hotel ->
+                MotelCard(hotel = hotel)
+            }
+        }
+    }
+}
+
+@Composable
+fun MotelCard(hotel: Hotel){
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ){
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ){
+            AsyncImage(
+                model = ("file:///android_asset/${hotel.hotel_cover_image}"),
+
+                contentDescription = hotel.hotel_name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(120.dp)
+            )
+
+            Column(
+                modifier = Modifier
+                    .padding(start = 12.dp)
+                    .fillMaxWidth()
+            ) {
                 Text(
                     text = hotel.hotel_name,
-                    modifier = Modifier.padding(vertical = 4.dp)
+                    fontWeight = FontWeight.Bold
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    repeat(times = hotel.hotel_rating.toInt()){
+                        Icon(
+                            imageVector = Icons.Default.Star,
+                            contentDescription = "Star Rating",
+                            modifier = Modifier.size(18.dp),
+                            tint = Color(0xFFFFC107)
+                        )
+                    }
+                }
             }
         }
     }
