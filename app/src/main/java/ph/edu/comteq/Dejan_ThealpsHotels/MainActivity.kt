@@ -1,3 +1,5 @@
+@file:Suppress("PackageNaming", "PackageName")
+
 package ph.edu.comteq.Dejan_ThealpsHotels
 
 import android.os.Bundle
@@ -6,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,17 +20,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -40,20 +53,42 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import coil.compose.AsyncImagePainter.State.Empty.painter
-import coil.request.ImageRequest
 import com.google.gson.Gson
 import ph.edu.comteq.Dejan_ThealpsHotels.ui.theme.Dejan_TheAlpsHotelsTheme
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             Dejan_TheAlpsHotelsTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Homepage(
-                        modifier = Modifier.padding(innerPadding)
+                var selectedHotel by remember { mutableStateOf<Hotel?>(null) }
+
+                if (selectedHotel == null) {
+                    Scaffold(
+                        modifier = Modifier.fillMaxSize(),
+                        topBar = {
+                            TopAppBar(
+                                title = { Text(text = "The Alps Hotel") },
+                                colors = TopAppBarDefaults.topAppBarColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    actionIconContentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                    ) { innerPadding ->
+                        Homepage(
+                            modifier = Modifier.padding(innerPadding),
+                            onHotelClick = { hotel -> selectedHotel = hotel }
+                        )
+                    }
+                } else {
+                    BookingDetailsScreen(
+                        hotel = selectedHotel!!,
+                        onBackClick = { selectedHotel = null }
                     )
                 }
             }
@@ -62,7 +97,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun Homepage(modifier: Modifier = Modifier) {
+fun Homepage(
+    modifier: Modifier = Modifier,
+    onHotelClick: (Hotel) -> Unit = {}
+) {
     val context = LocalContext.current
     var hotels by remember { mutableStateOf(emptyList<Hotel>()) }
     var searchQuery by remember { mutableStateOf(value = "") }
@@ -82,14 +120,13 @@ fun Homepage(modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxSize()
             .background(color = Color.White)
-            .padding(16.dp)
+            .padding(16.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "The Alphs Hotel", fontWeight = FontWeight.Bold, color = Color(0xFFFFDBBB))
-
+            Text(text = "The Alps Hotel", fontWeight = FontWeight.Bold, color = Color(0xFFFFDBBB))
 
             Image(
                 painter = painterResource(id = R.drawable.france_national_flag),
@@ -109,7 +146,6 @@ fun Homepage(modifier: Modifier = Modifier) {
             )
         }
 
-
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -117,7 +153,6 @@ fun Homepage(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 12.dp),
-
             singleLine = true
         )
 
@@ -126,31 +161,32 @@ fun Homepage(modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .padding(top = 8.dp)
         ) {
-
             items(filteredHotels) { hotel ->
-                MotelCard(hotel = hotel)
+                MotelCard(hotel = hotel) {
+                    onHotelClick(hotel)
+                }
             }
         }
     }
 }
 
 @Composable
-fun MotelCard(hotel: Hotel){
+fun MotelCard(hotel: Hotel, onClick: () -> Unit = {}) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ){
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(8.dp),
             verticalAlignment = Alignment.CenterVertically
-        ){
+        ) {
             AsyncImage(
-                model = ("file:///android_asset/${hotel.hotel_cover_image}"),
-
+                model = "file:///android_asset/${hotel.hotel_cover_image}",
                 contentDescription = hotel.hotel_name,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.size(120.dp)
@@ -168,7 +204,7 @@ fun MotelCard(hotel: Hotel){
                 Row(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    repeat(times = hotel.hotel_rating.toInt()){
+                    repeat(times = hotel.hotel_rating.toInt()) {
                         Icon(
                             imageVector = Icons.Default.Star,
                             contentDescription = "Star Rating",
@@ -178,6 +214,69 @@ fun MotelCard(hotel: Hotel){
                     }
                 }
             }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun BookingDetailsScreen(
+    hotel: Hotel,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Guest reviews", "Room selection")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(text = "Booking") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.White,
+                    titleContentColor = Color.Black,
+                    navigationIconContentColor = Color.Black
+                )
+            )
+        },
+        modifier = modifier.fillMaxSize()
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .background(Color(0xFFF5F5F5))
+        ) {
+            PrimaryTabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.White
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = {
+                            Text(
+                                text = title,
+                                color = if (selectedTabIndex == index) Color.Red else Color.Black
+                            )
+                        }
+                    )
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.White)
+            )
         }
     }
 }
